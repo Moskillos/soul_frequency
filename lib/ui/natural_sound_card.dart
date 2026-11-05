@@ -29,14 +29,14 @@ class _NaturalSoundCardState extends State<NaturalSoundCard> {
         alignment: Alignment.center,
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: widget.nature.isSelected ? detailColor : menuColor,
+          image: DecorationImage(
+            opacity: widget.nature.isSelected ? 1 : 0.4,
+            image: AssetImage(widget.nature.image),
+            fit: BoxFit.cover,
+          ),
           borderRadius: const BorderRadius.all(Radius.circular(20)),
         ),
-        child: Image.asset(
-          widget.nature.image,
-          width: 50,
-          alignment: Alignment.center,
-        ),
+        child: SizedBox(),
       ),
     );
   }

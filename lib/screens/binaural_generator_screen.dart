@@ -7,6 +7,7 @@ import 'package:soul_frequency/costants/text_style.dart';
 import 'package:soul_frequency/store/app_state.dart';
 import 'package:soul_frequency/ui/binaural_group_card.dart';
 import 'package:soul_frequency/ui/natural_sound_card.dart';
+import 'package:soul_frequency/utils/device_check.dart';
 
 import '../models/natural_sound_model.dart';
 import '../services/ambient_audio_service.dart';
@@ -43,14 +44,9 @@ class _BinauralGeneratorScreenState extends State<BinauralGeneratorScreen> {
     });
   }
 
-  void setFrequency(String value){
-    Provider.of<AppState>(context, listen: false).setFrequency(double.parse(value));
-  }
-
   @override
   Widget build(BuildContext context) {
     List<NaturalSoundModel>? naturalSounds = Provider.of<AppState>(context).naturalSoundsList;
-    double frequency = Provider.of<AppState>(context).generator.target.leftFrequency;
 
     return Scaffold(
       backgroundColor: mainColor,
@@ -60,42 +56,9 @@ class _BinauralGeneratorScreenState extends State<BinauralGeneratorScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Image.asset("assets/binaural.jpg"),
+                Image.asset("assets/binaural.jpg", width: isBigScreen(context) ? 500 : null,),
                 Text("Frequenze Binaurali", style: whiteText50Corinthia),
                 SizedBox(height: 30,),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Text("Frequenza", style: white54Text16,),
-                    SizedBox(height: 10,),
-                    Container(
-                      decoration: BoxDecoration(
-                          border: Border.all(color: Colors.white, width: 1),
-                          borderRadius: BorderRadius.circular(50),
-                        color: Colors.white
-                      ),
-                      constraints: BoxConstraints(
-                        maxWidth: 100,
-                        maxHeight: 45
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: TextFormField(
-                          maxLength: 3,
-                          keyboardType: TextInputType.number,
-                          decoration: InputDecoration(
-                            counterText: '',
-                              border: InputBorder.none,
-                              hintText: frequency.toString(),
-                              hintStyle: blackText16,
-                          ),
-                          onChanged: (value) => setFrequency(value),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 10,),
                 BinauralGenerator(nature: nature, ),
                 SizedBox(height: 30,),
                 Column(
@@ -133,7 +96,6 @@ class _BinauralGeneratorScreenState extends State<BinauralGeneratorScreen> {
                       child: LayoutBuilder(
                         builder: (context, constraints) {
                           final width = constraints.maxWidth;
-                          final columns = 3;
 
                           return Padding(
                             padding: const EdgeInsets.all(8.0),
@@ -142,7 +104,7 @@ class _BinauralGeneratorScreenState extends State<BinauralGeneratorScreen> {
                               physics: const NeverScrollableScrollPhysics(),
                               gridDelegate:
                               SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: columns,
+                                crossAxisCount: isBigScreen(context) ? 5 : 4,
                                 crossAxisSpacing: 12,
                                 mainAxisSpacing: 9,
                                 childAspectRatio: 1,

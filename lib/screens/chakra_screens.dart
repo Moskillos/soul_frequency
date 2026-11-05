@@ -6,6 +6,7 @@ import 'package:soul_frequency/models/chakra_model.dart';
 import 'package:soul_frequency/store/app_state.dart';
 import 'package:soul_frequency/ui/chakra_card.dart';
 import 'package:soul_frequency/ui/chakra_web_card.dart';
+import 'package:soul_frequency/utils/device_check.dart';
 
 import '../costants/text_style.dart';
 import '../services/binaural_audio_service.dart';
@@ -33,7 +34,7 @@ class _ChakraScreensState extends State<ChakraScreens> {
               Padding(
                 padding: const EdgeInsets.all(50),
                 child: Column(
-                    children: List.generate(chakraList.length, (index) => kIsWeb && MediaQuery.widthOf(context) > 800 ? ChakraWebCard(chakra: chakraList[index]) : ChakraCard(chakra: chakraList[index]))
+                    children: List.generate(chakraList.length, (index) => isBigScreen(context) ? ChakraWebCard(chakra: chakraList[index]) : ChakraCard(chakra: chakraList[index]))
                 ),
               ),
             ],

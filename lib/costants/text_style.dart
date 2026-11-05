@@ -47,6 +47,12 @@ const whiteText16 = TextStyle(
     color: Colors.white
 );
 
+const redText10 = TextStyle(
+    fontSize: 10,
+    fontFamily: 'OpenSans',
+    color: Colors.red
+);
+
 const redText16 = TextStyle(
     fontSize: 16,
     fontFamily: 'OpenSans',

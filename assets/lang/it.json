@@ -1,6 +1,35 @@
 {
-  "activeBinaural": "Attiva binaurale:",
+
+  "balance": "Equilibrio",
   "binaural": "Binaurale",
+  "birds": "Uccelli",
+  "cat": "Gatto",
+  "concentration": "Concentrazione",
+  "creativity": "Creatività",
+
+  "deepMeditation":  "Meditazione profonda",
+  "deepSea": "Oceano Profondo",
+  "deepSleep": "Sonno profondo",
+  "diaryLife": "Vita diurna",
+  "environment": "Ambiente",
+  "fire": "Fuoco",
+  "frequency": "Frequenza",
+
   "frequencySelected": "Frequenza selezionata:",
-  "none": "Nessuno"
+  "gong": "Gong",
+  "healing": "Guarigione",
+  "health": "Benessere",
+  "highPerformance": "Alte prestazioni",
+  "intuition": "Intuizioni",
+  "learning": "Apprendimento",
+  "maxAttention": "Massima attenzione",
+  "mentalActivity": "Attività mentale",
+  "none": "Nessuno",
+  "offBinaural": "Binaurale off",
+  "onBinaural": "Binaurale on",
+  "rain": "Pioggia",
+  "regeneration":  "Rigenerazione",
+  "relax": "Rilassamento",
+  "waves": "Onde",
+  "wind": "Vento"
 }

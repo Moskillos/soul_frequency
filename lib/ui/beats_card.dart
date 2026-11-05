@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:soul_frequency/costants/text_style.dart';
 import 'package:soul_frequency/models/beat_model.dart';
 
+import '../services/app_localization_service.dart';
 import '../store/app_state.dart';
 
 class BeatsCard extends StatefulWidget {
@@ -17,7 +18,7 @@ class _BeatsCardState extends State<BeatsCard> {
 
   @override
   Widget build(BuildContext context) {
-    double beat = Provider.of<AppState>(context).generator.target.beatFrequency;
+    double beat = Provider.of<AppState>(context).generator.beat;
 
     bool isBeatSelected() {
       return beat >= widget.beat.min && beat <= widget.beat.max;
@@ -25,15 +26,15 @@ class _BeatsCardState extends State<BeatsCard> {
 
     return Container(
       decoration: BoxDecoration(
+          image: DecorationImage(
+            opacity: isBeatSelected() ? 1 : 0.4,
+            image: AssetImage(widget.beat.image),
+            fit: BoxFit.cover,
+          ),
         color: isBeatSelected() ? widget.beat.color : Colors.black,
         borderRadius: BorderRadius.all(Radius.circular(10))
       ),
-      child: Column(
-        children: [
-          Text(widget.beat.name, style: whiteText16,),
-          Text("${widget.beat.min} - ${widget.beat.max} Hz", style: whiteText10,),
-        ],
-      )
+      child: SizedBox()
     );
   }
 }

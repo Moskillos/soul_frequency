@@ -5,6 +5,7 @@ import 'package:soul_frequency/costants/text_style.dart';
 import 'package:soul_frequency/ui/binaural_card.dart';
 
 import '../models/frequencies_model.dart';
+import '../utils/device_check.dart';
 
 class BinauralGroupCard extends StatefulWidget {
   FrequenciesModel frequency;
@@ -43,7 +44,7 @@ class _BinauralGroupCardState extends State<BinauralGroupCard> {
                       physics: const NeverScrollableScrollPhysics(),
                       gridDelegate:
                       SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: columns,
+                        crossAxisCount: isBigScreen(context) ? 6 : 3,
                         crossAxisSpacing: 12,
                         mainAxisSpacing: 9,
                         childAspectRatio: 1,

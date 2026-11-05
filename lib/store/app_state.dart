@@ -156,6 +156,7 @@ class AppState extends ChangeNotifier {
     generator.beat = beats;
     generator.isPlaying = false;
     BinauralAudioService.instance.stop();
+    audio.stop();
     notifyListeners();
   }
 }
