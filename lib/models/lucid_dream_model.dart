@@ -14,6 +14,7 @@ class LucidDreamModel {
   bool useBinaural;
   bool useProceduralMusic;
   bool useNaturalSounds;
+  bool useVoiceGuide;
 
   Duration preparationDuration;
 
@@ -24,6 +25,7 @@ class LucidDreamModel {
     this.useBinaural = true,
     this.useProceduralMusic = true,
     this.useNaturalSounds = false,
+    this.useVoiceGuide = true,
     this.preparationDuration = const Duration(minutes: 15),
   });
 }

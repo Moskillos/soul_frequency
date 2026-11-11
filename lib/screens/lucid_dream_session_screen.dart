@@ -1,11 +1,15 @@
 import 'dart:async';
 
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_tts/flutter_tts.dart';
+import 'package:supertonic_flutter/supertonic_flutter.dart';
 import 'dart:ui' show FontFeature;
 import '../models/lucid_dream_model.dart';
 import '../services/procedural_music_service.dart';
 import '../services/binaural_audio_service.dart';
 import '../services/ambient_audio_service.dart';
+import '../ui/voices_builder.dart';
 
 class LucidDreamSessionScreen extends StatefulWidget {
   final LucidDreamModel model;
@@ -31,19 +35,29 @@ class _LucidDreamSessionScreenState
   static const Color backgroundColor = Color(0xFF171426);
   static const Color cardColor = Color(0xFF252136);
   static const Color secondaryTextColor = Color(0xFFB8B2C9);
-
+  final SupertonicTTS _tts = SupertonicTTS();
+  final TTSAudioPlayer _player = TTSAudioPlayer();
+  bool ttsReady = false;
+  bool ttsInitializing = true;
   Timer? timer;
-
+  final FlutterTts tts = FlutterTts();
   late List<_ProgramStep> steps;
 
   int currentStep = 0;
   int remainingSeconds = 0;
-
+  bool _isSpeaking = false;
   bool isPlaying = false;
   bool isCompleted = false;
   bool isChangingPlayback = false;
-
+  String _selectedVoice = 'F5';
+  String _selectedLang = 'en';
+  double _speechSpeed = 0.7;
+  double _silenceDuration = 0.3;
+  String? _errorMessage;
+  bool _isInitialized = false;
   final Set<int> completedSteps = {};
+  bool _isInitializing = false;
+  String _initializationStatus = 'Checking model files...';
 
   // Tracciamo separatamente i servizi effettivamente avviati.
   // In questo modo non proviamo a riprendere un audio mai iniziato.
@@ -69,11 +83,70 @@ class _LucidDreamSessionScreenState
     if (!isDailyPractice && steps.isNotEmpty) {
       remainingSeconds = steps.first.duration.inSeconds;
     }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeTTS();
+    });
+    _setupAudioPlayerListeners();
+    unawaited(_initializeTts());
   }
 
-  // ------------------------------------------------------------
-  // GENERAZIONE DEL PROGRAMMA
-  // ------------------------------------------------------------
+  void _setupAudioPlayerListeners() {
+    _player.playerStateStream.listen((state) {
+      if (!mounted) return;
+      setState(() {
+        _isSpeaking = state == PlayerState.playing;
+      });
+    });
+  }
+
+  Future<void> _initializeTTS() async {
+    if (_isInitialized) return;
+
+    setState(() {
+      _isInitializing = true;
+      _errorMessage = null;
+      _initializationStatus = 'Checking model files...';
+    });
+
+    try {
+      final modelsReady = await SupertonicTTS.modelsReady();
+      if (!modelsReady) {
+        setState(() {
+          _initializationStatus = 'Downloading model files (0/16)...';
+        });
+
+        await SupertonicTTS.preDownloadModels(
+          onProgress: (completed, total, file, fileProgress) {
+            if (!mounted) return;
+            final percent = (fileProgress * 100)
+                .clamp(0, 100)
+                .toStringAsFixed(0);
+            setState(() {
+              _initializationStatus =
+              'Downloading model files (${completed.clamp(0, total)}/$total)\n'
+                  '$file • $percent%';
+            });
+          },
+        );
+      }
+
+      setState(() {
+        _initializationStatus = 'Initializing speech engine...';
+      });
+      await _tts.initialize();
+      setState(() {
+        _isInitialized = true;
+        _isInitializing = false;
+        _errorMessage = null;
+      });
+    } catch (e) {
+      debugPrint('Error initializing TTS: $e');
+      setState(() {
+        _isInitializing = false;
+        _errorMessage = 'Failed to initialize TTS: $e';
+      });
+    }
+  }
 
   void _generateProgram() {
     switch (model.technique) {
@@ -351,9 +424,122 @@ class _LucidDreamSessionScreenState
     ambientStarted = false;
   }
 
-  // ------------------------------------------------------------
-  // TIMER E RIPRODUZIONE
-  // ------------------------------------------------------------
+  Future<void> _stopVoice() async {
+    try {
+      await tts.stop();
+      await _stop();
+    } catch (e) {
+      debugPrint('Errore arresto voce: $e');
+    }
+  }
+
+  Future<void> _stop() async {
+    await _player.stop();
+    setState(() {
+      _isSpeaking = false;
+    });
+  }
+
+  Future<void> _initializeTts() async {
+    try {
+      await tts.setLanguage('it-IT');
+      await tts.setSpeechRate(0.5);
+      await tts.setVolume(0.9);
+      await tts.setPitch(0.3);
+      await tts.awaitSpeakCompletion(true);
+
+      if (!mounted) return;
+
+      setState(() {
+        ttsReady = true;
+        ttsInitializing = false;
+      });
+
+      debugPrint('TTS inizializzato correttamente');
+    } catch (e, stackTrace) {
+      debugPrint('Errore inizializzazione TTS: $e');
+      debugPrint('$stackTrace');
+
+      if (!mounted) return;
+
+      setState(() {
+        ttsReady = false;
+        ttsInitializing = false;
+      });
+    }
+  }
+
+  Future<void> _speakCurrentStep() async {
+    print("model");
+    print(model.useVoiceGuide);
+    print(ttsReady);
+    if (!model.useVoiceGuide || !ttsReady) return;
+
+    try {
+      await tts.stop();
+
+      // Non attendiamo la fine della lettura:
+      // il timer e la musica devono proseguire in parallelo.
+      unawaited(
+        tts.speak(
+          '${currentProgramStep.title}. ${currentProgramStep.description}',
+        ),
+      );
+    } catch (e) {
+      debugPrint('Errore sintesi vocale: $e');
+    }
+  }
+
+  Future<void> _speak() async {
+    debugPrint('Speak button clicked');
+    debugPrint(
+      'Initialized: $_isInitialized',
+    );
+
+    if (!_isInitialized) {
+      debugPrint('Speak returned early: not initialized or empty text');
+      return;
+    }
+
+    debugPrint('Starting synthesis...');
+    setState(() {
+      _isSpeaking = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final config = TTSConfig(
+        denoisingSteps: 14,
+        speechSpeed: _speechSpeed,
+        silenceDuration: _silenceDuration,
+      );
+
+      debugPrint('Calling tts.synthesize...');
+      final result = await _tts.synthesize(
+        currentProgramStep.description,
+        language: _selectedLang,
+        voiceStyle: _selectedVoice,
+        config: config,
+      );
+
+      debugPrint(
+        'Synthesis complete, audio length: ${result.audioData.length}',
+      );
+      debugPrint('Playing audio...');
+      await _player.play(result);
+      debugPrint('Audio playback started');
+    } catch (e, stackTrace) {
+      debugPrint('Error during synthesis: $e');
+      debugPrint('Stack trace: $stackTrace');
+      setState(() {
+        _errorMessage = 'TTS error: $e';
+      });
+    } finally {
+      setState(() {
+        _isSpeaking = false;
+      });
+    }
+  }
 
   Future<void> _togglePlayback() async {
     if (isChangingPlayback || isCompleted || isDailyPractice) return;
@@ -363,6 +549,7 @@ class _LucidDreamSessionScreenState
     if (isPlaying) {
       timer?.cancel();
 
+      await _stopVoice();
       await _pauseAudio();
 
       if (mounted) {
@@ -372,6 +559,9 @@ class _LucidDreamSessionScreenState
       }
     } else {
       try {
+        if (model.useVoiceGuide && !ttsReady) {
+          await _initializeTts();
+        }
         await _startOrResumeAudio();
 
         if (!mounted) return;
@@ -380,9 +570,15 @@ class _LucidDreamSessionScreenState
           isPlaying = true;
         });
 
+        if(_selectedVoice == "F5"){
+          unawaited(_speakCurrentStep());
+        } else {
+          unawaited(_speak());
+        }
+
         _startTimer();
       } catch (e) {
-        debugPrint('Errore avvio sessione audio: $e');
+        debugPrint('Errore avvio sessione: $e');
 
         await _stopAudio();
 
@@ -393,14 +589,13 @@ class _LucidDreamSessionScreenState
 
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text(
-                'Non è stato possibile avviare l’audio. Controlla i servizi audio e gli asset.',
-              ),
+              content: Text('Impossibile avviare la riproduzione audio.'),
             ),
           );
         }
       }
-    }
+
+      }
 
     isChangingPlayback = false;
   }
@@ -567,6 +762,8 @@ class _LucidDreamSessionScreenState
   void dispose() {
     timer?.cancel();
     unawaited(_stopAudio());
+    unawaited(_stop());
+    unawaited(tts.stop());
     super.dispose();
   }
 
@@ -614,9 +811,11 @@ class _LucidDreamSessionScreenState
     return completedSteps.length / steps.length;
   }
 
-  // ------------------------------------------------------------
-  // INTERFACCIA
-  // ------------------------------------------------------------
+  void setVoice(String voice){
+    setState(() {
+      _selectedVoice = voice;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -652,6 +851,7 @@ class _LucidDreamSessionScreenState
                 _buildDailyProgram()
               else
                 _buildGuidedProgram(),
+              if(!isDailyPractice)VoicesBuilder(selectedVoice: _selectedVoice, setVoice: setVoice,),
               const SizedBox(height: 20),
               _buildAudioInfo(),
               const SizedBox(height: 24),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../costants/colors.dart';
 import '../models/lucid_dream_model.dart';
 import 'lucid_dream_session_screen.dart';
 
@@ -11,10 +12,9 @@ class LucidDreamScreen extends StatefulWidget {
 }
 
 class _LucidDreamScreenState extends State<LucidDreamScreen> {
-  final Color mainColor = const Color(0xFFB4A3E7);
-  final Color backgroundColor = const Color(0xFF171426);
-  final Color cardColor = const Color(0xFF252136);
 
+  double soundFrequency = 432;
+  double binauralFrequency = 4;
   final LucidDreamModel model = LucidDreamModel();
 
   // --------------------------------------------------
@@ -94,11 +94,7 @@ class _LucidDreamScreenState extends State<LucidDreamScreen> {
 
             const SizedBox(height: 25),
 
-            _buildAudioSection(),
-
-            const SizedBox(height: 25),
-
-            _buildDurationSettings(),
+            _buildAudioSettings(),
 
             const SizedBox(height: 30),
 
@@ -341,152 +337,299 @@ class _LucidDreamScreenState extends State<LucidDreamScreen> {
   // AUDIO SECTION
   // --------------------------------------------------
 
-  Widget _buildAudioSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+
+  Widget _buildAudioSettings() {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        children: [
+          _buildSwitch(
+            icon: Icons.music_note_rounded,
+            title: 'Musica procedurale',
+            subtitle: 'Melodia e atmosfere generate in tempo reale.',
+            value: model.useProceduralMusic,
+            onChanged: (_) => {
+              setState(() {
+                model.useProceduralMusic = !model.useProceduralMusic;
+              }),
+            },
+          ),
+          if (model.useProceduralMusic) ...[
+            const Divider(color: Colors.white12, height: 24),
+            _buildFrequencySelector(),
+          ],
+          const Divider(color: Colors.white12, height: 24),
+          _buildSwitch(
+            icon: Icons.headphones_rounded,
+            title: 'Suono binaurale',
+            subtitle: 'Due frequenze differenti, una per ciascun orecchio.',
+            value: model.useBinaural,
+            onChanged: (_) => {
+              setState(() {
+                model.useBinaural = !model.useBinaural;
+              }),
+            },
+          ),
+          if (model.useBinaural) ...[
+            const SizedBox(height: 16),
+            _buildBinauralSelector(),
+          ],
+          const Divider(color: Colors.white12, height: 24),
+          _buildSwitch(
+            icon: Icons.water_drop_outlined,
+            title: 'Suoni naturali',
+            subtitle: 'Aggiungi un ambiente sonoro alla sessione.',
+            value: model.useNaturalSounds,
+            onChanged: (_) => {
+              setState(() {
+                model.useNaturalSounds = !model.useNaturalSounds;
+              }),
+            },
+          ),
+          // if (useNaturalSounds) ...[
+          //   const SizedBox(height: 15),
+          //   _buildAmbientSelector(),
+          // ],
+          const Divider(color: Colors.white12, height: 24),
+          _buildSwitch(
+              icon: Icons.record_voice_over_rounded,
+              title: 'Guida vocale',
+              subtitle: 'Ascolta le istruzioni durante le varie fasi.',
+              value: model.useVoiceGuide,
+              onChanged: (_) => {
+                setState(() {
+                  model.useVoiceGuide = !model.useVoiceGuide;
+                }),
+              }
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSwitch({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return Row(
       children: [
-        _sectionTitle(
-          'Personalizza l\'audio',
-          Icons.graphic_eq,
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: mainColor.withValues(alpha: 0.13),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, color: backgroundColor, size: 20),
         ),
-
-        const SizedBox(height: 15),
-
-        _buildCard(
+        const SizedBox(width: 12),
+        Expanded(
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildSwitch(
-                title: 'Audio binaurale',
-                subtitle: 'Due frequenze differenti tra le orecchie',
-                value: model.useBinaural,
-                onChanged: (value) {
-                  setState(() {
-                    model.useBinaural = value;
-                  });
-                },
-              ),
-
-              if (model.useBinaural) ...[
-                const SizedBox(height: 12),
-                _buildSlider(
-                  title: 'Frequenza binaurale',
-                  value: model.binauralFrequency,
-                  min: 0.5,
-                  max: 30,
-                  divisions: 59,
-                  unit: 'Hz',
-                  onChanged: (value) {
-                    setState(() {
-                      model.binauralFrequency = value;
-                    });
-                  },
+              Text(
+                title,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
                 ),
-              ],
-
-              const Divider(color: Colors.white12, height: 30),
-
-              _buildSwitch(
-                title: 'Musica generativa',
-                subtitle: 'Suoni continui e melodie procedurali',
-                value: model.useProceduralMusic,
-                onChanged: (value) {
-                  setState(() {
-                    model.useProceduralMusic = value;
-                  });
-                },
               ),
-
-              if (model.useProceduralMusic) ...[
-                const SizedBox(height: 12),
-                _buildSlider(
-                  title: 'Frequenza sonora',
-                  value: model.soundFrequency,
-                  min: 220,
-                  max: 880,
-                  divisions: 660,
-                  unit: 'Hz',
-                  onChanged: (value) {
-                    setState(() {
-                      model.soundFrequency = value;
-                    });
-                  },
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                style: const TextStyle(
+                  color: secondaryText,
+                  fontSize: 11,
+                  height: 1.3,
                 ),
-              ],
-
-              const Divider(color: Colors.white12, height: 30),
-
-              _buildSwitch(
-                title: 'Suoni naturali',
-                subtitle: 'Pioggia, vento, onde e altri ambienti',
-                value: model.useNaturalSounds,
-                onChanged: (value) {
-                  setState(() {
-                    model.useNaturalSounds = value;
-                  });
-                },
               ),
             ],
           ),
+        ),
+        Switch.adaptive(
+          value: value,
+          activeColor: mainColor,
+          onChanged: onChanged,
         ),
       ],
     );
   }
 
-  // --------------------------------------------------
-  // DURATION
-  // --------------------------------------------------
+  Widget _buildFrequencySelector() {
+    const frequencies = [396.0, 417.0, 432.0, 440.0, 528.0, 639.0, 741.0, 852.0];
 
-  Widget _buildDurationSettings() {
-    final minutes =
-        model.preparationDuration.inMinutes;
-
-    return _buildCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _sectionTitle(
-            'Durata audio di preparazione',
-            Icons.timer_outlined,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Frequenza della musica',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
           ),
+        ),
+        const SizedBox(height: 9),
+        DropdownButtonFormField<double>(
+          value: soundFrequency,
+          dropdownColor: cardColor,
+          decoration: _dropdownDecoration(),
+          style: const TextStyle(color: Colors.white, fontSize: 13),
+          items: frequencies.map((frequency) {
+            return DropdownMenuItem(
+              value: frequency,
+              child: Text('${frequency.toStringAsFixed(0)} Hz'),
+            );
+          }).toList(),
+          onChanged: (value) {
+            if (value != null) {
+              setState(() => soundFrequency = value);
+            }
+          },
+        ),
+      ],
+    );
+  }
 
-          const SizedBox(height: 15),
+  Widget _buildBinauralSelector() {
+    const frequencies = [2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 10.0];
 
-          Center(
-            child: Text(
-              '$minutes minuti',
-              style: TextStyle(
-                color: mainColor,
-                fontSize: 25,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Frequenza binaurale',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
           ),
+        ),
+        const SizedBox(height: 9),
+        DropdownButtonFormField<double>(
+          value: binauralFrequency,
+          dropdownColor: cardColor,
+          decoration: _dropdownDecoration(),
+          style: const TextStyle(color: Colors.white, fontSize: 13),
+          items: frequencies.map((frequency) {
+            return DropdownMenuItem(
+              value: frequency,
+              child: Text('${frequency.toStringAsFixed(0)} Hz'),
+            );
+          }).toList(),
+          onChanged: (value) {
+            if (value != null) {
+              setState(() => binauralFrequency = value);
+            }
+          },
+        ),
+        const SizedBox(height: 7),
+        const Text(
+          'La frequenza selezionata rappresenta la differenza tra i due toni.',
+          style: TextStyle(color: secondaryText, fontSize: 10),
+        ),
+      ],
+    );
+  }
 
-          Slider(
-            value: minutes.toDouble(),
-            min: 5,
-            max: 60,
-            divisions: 11,
-            activeColor: mainColor,
-            inactiveColor: Colors.white24,
-            onChanged: (value) {
-              setState(() {
-                model.preparationDuration =
-                    Duration(minutes: value.round());
-              });
-            },
-          ),
+  // Widget _buildAmbientSelector() {
+  //   if (widget.ambientOptions.isEmpty) {
+  //     return const Text(
+  //       'Non sono disponibili suoni naturali.',
+  //       style: TextStyle(color: Colors.orangeAccent, fontSize: 12),
+  //     );
+  //   }
+  //
+  //   return Column(
+  //     crossAxisAlignment: CrossAxisAlignment.start,
+  //     children: [
+  //       const Text(
+  //         'Scegli il suono ambientale',
+  //         style: TextStyle(
+  //           color: Colors.white,
+  //           fontSize: 12,
+  //           fontWeight: FontWeight.w600,
+  //         ),
+  //       ),
+  //       const SizedBox(height: 10),
+  //       ...widget.ambientOptions.map((option) {
+  //         final selected = selectedAmbientPath == option.assetPath;
+  //
+  //         return GestureDetector(
+  //           onTap: () {
+  //             setState(() {
+  //               selectedAmbientPath = option.assetPath;
+  //             });
+  //           },
+  //           child: Container(
+  //             margin: const EdgeInsets.only(bottom: 8),
+  //             padding: const EdgeInsets.symmetric(
+  //               horizontal: 12,
+  //               vertical: 11,
+  //             ),
+  //             decoration: BoxDecoration(
+  //               color: selected
+  //                   ? mainColor.withValues(alpha: 0.13)
+  //                   : Colors.white.withValues(alpha: 0.035),
+  //               borderRadius: BorderRadius.circular(12),
+  //               border: Border.all(
+  //                 color: selected
+  //                     ? mainColor.withValues(alpha: 0.6)
+  //                     : Colors.white12,
+  //               ),
+  //             ),
+  //             child: Row(
+  //               children: [
+  //                 Icon(option.icon, color: mainColor, size: 19),
+  //                 const SizedBox(width: 10),
+  //                 Expanded(
+  //                   child: Text(
+  //                     option.title,
+  //                     style: const TextStyle(
+  //                       color: Colors.white,
+  //                       fontSize: 12,
+  //                     ),
+  //                   ),
+  //                 ),
+  //                 Icon(
+  //                   selected
+  //                       ? Icons.check_circle
+  //                       : Icons.circle_outlined,
+  //                   color: selected ? mainColor : Colors.white38,
+  //                   size: 19,
+  //                 ),
+  //               ],
+  //             ),
+  //           ),
+  //         );
+  //       }),
+  //     ],
+  //   );
+  // }
 
-          const Text(
-            'Tempo indicativo dedicato alla preparazione. '
-                'Non rappresenta la durata del sonno.',
-            style: TextStyle(
-              color: Colors.white54,
-              fontSize: 11,
-              height: 1.5,
-            ),
-          ),
-        ],
+  InputDecoration _dropdownDecoration() {
+    return InputDecoration(
+      filled: true,
+      fillColor: Colors.white.withValues(alpha: 0.045),
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: 13,
+        vertical: 11,
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Colors.white12),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: mainColor),
       ),
     );
   }
@@ -510,96 +653,6 @@ class _LucidDreamScreenState extends State<LucidDreamScreen> {
             fontSize: 17,
             fontWeight: FontWeight.bold,
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCard({required Widget child}) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(17),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(19),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.06),
-        ),
-      ),
-      child: child,
-    );
-  }
-
-  Widget _buildSwitch({
-    required String title,
-    required String subtitle,
-    required bool value,
-    required ValueChanged<bool> onChanged,
-  }) {
-    return SwitchListTile(
-      contentPadding: EdgeInsets.zero,
-      activeThumbColor: mainColor,
-      title: Text(
-        title,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-      subtitle: Text(
-        subtitle,
-        style: const TextStyle(
-          color: Colors.white54,
-          fontSize: 11,
-        ),
-      ),
-      value: value,
-      onChanged: onChanged,
-    );
-  }
-
-  Widget _buildSlider({
-    required String title,
-    required double value,
-    required double min,
-    required double max,
-    required int divisions,
-    required String unit,
-    required ValueChanged<double> onChanged,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment:
-          MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              title,
-              style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 12,
-              ),
-            ),
-            Text(
-              '${value.toStringAsFixed(1)} $unit',
-              style: TextStyle(
-                color: mainColor,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-
-        Slider(
-          value: value,
-          min: min,
-          max: max,
-          divisions: divisions,
-          activeColor: mainColor,
-          inactiveColor: Colors.white24,
-          onChanged: onChanged,
         ),
       ],
     );
@@ -663,6 +716,10 @@ class _LucidDreamScreenState extends State<LucidDreamScreen> {
 
   void _continue() {
     // Passiamo tutte le impostazioni alla pagina successiva.
+    print(model.useVoiceGuide);
+    print(model.useNaturalSounds);
+    print(model.useBinaural);
+    print(model.useProceduralMusic);
     Navigator.push(
       context,
       MaterialPageRoute(
