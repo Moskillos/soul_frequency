@@ -6,3 +6,6 @@ const cardBackground = Color(0xFF252638);
 const detailColor = Color(0xFF2e2e48);
 const benefitColor = Color(0xFF373445);
 const menuColor = Color(0xFF1e1e26);
+const Color backgroundColor = Color(0xFF171426);
+const Color cardColor = Color(0xFF252136);
+const Color secondaryText = Color(0xFFB8B2C9);

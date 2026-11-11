@@ -3,8 +3,9 @@ class TargetModel{
   double leftFrequency;
   double beatFrequency;
   double volume;
+  String image;
 
-  TargetModel(this.target, this.leftFrequency, this.beatFrequency, this.volume);
+  TargetModel(this.target, this.leftFrequency, this.beatFrequency, this.volume, this.image);
 }
 
 class FrequenciesModel {

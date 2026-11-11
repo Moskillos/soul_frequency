@@ -3,15 +3,22 @@ import 'package:flutter_soloud/flutter_soloud.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
+import 'package:soul_frequency/screens/akasha_screen.dart';
+import 'package:soul_frequency/screens/astral_travel_screen.dart';
+import 'package:soul_frequency/screens/astral_travel_session_screen.dart';
 import 'package:soul_frequency/screens/binaural_generator_screen.dart';
 import 'package:soul_frequency/screens/centering_screen.dart';
 import 'package:soul_frequency/screens/chakra_screens.dart';
 import 'package:soul_frequency/screens/home.dart';
+import 'package:soul_frequency/screens/lucid_dream_screen.dart';
+import 'package:soul_frequency/screens/profile_screen.dart';
+import 'package:soul_frequency/screens/super_tonic.dart';
 import 'package:soul_frequency/services/app_localization_service.dart';
 import 'package:soul_frequency/services/binaural_audio_service.dart';
 import 'package:soul_frequency/store/app_state.dart';
 
 import 'costants/colors.dart';
+import 'models/astral_travel_model.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -63,15 +70,6 @@ class MyApp extends StatelessWidget {
   }
 }
 
-
-
-List<String> menuIcons = [
-  'home.svg',
-  'truck.svg',
-  'earth.svg',
-  'preferences.svg',
-];
-
 List<String> menuIconsTitle(BuildContext context) {
   return [
     "Home",
@@ -83,9 +81,8 @@ List<String> menuIconsTitle(BuildContext context) {
 
 List<String> menuIconsSelected = [
   'assets/home.svg',
-  'assets/chakra.svg',
   'assets/head-phone.svg',
-  'assets/center.svg',
+  'assets/chakra.svg',
 ];
 
 class SoulFrequencyMode extends StatefulWidget {
@@ -100,9 +97,8 @@ class _SoulFrequencyModeState extends State<SoulFrequencyMode> {
 
   List<Widget> screens = [
     Home(),
-    ChakraScreens(),
     BinauralGeneratorScreen(),
-    CenteringScreen()
+    ProfileScreen()
   ];
 
   @override
@@ -134,7 +130,7 @@ class _BottomBar extends StatelessWidget {
       height: 90,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: List.generate(menuIcons.length, (i) {
+        children: List.generate(menuIconsSelected.length, (i) {
           final bool isSelected = selected == i;
 
           return Expanded(

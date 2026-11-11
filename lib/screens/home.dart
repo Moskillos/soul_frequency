@@ -1,10 +1,23 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:soul_frequency/costants/colors.dart';
+import 'package:soul_frequency/screens/akasha_screen.dart';
+import 'package:soul_frequency/screens/astral_travel_screen.dart';
+import 'package:soul_frequency/screens/centering_screen.dart';
+import 'package:soul_frequency/screens/chakra_screens.dart';
+import 'package:soul_frequency/screens/lucid_dream_screen.dart';
+import 'package:soul_frequency/ui/home_card.dart';
 
 import '../services/binaural_audio_service.dart';
 import '../services/procedural_music_service.dart';
 
+
+class HomeCardModel {
+  String title;
+  Widget screen;
+
+  HomeCardModel(this.title, this.screen);
+}
 class Home extends StatefulWidget {
   const Home({super.key});
 
@@ -14,6 +27,14 @@ class Home extends StatefulWidget {
 
 class _HomeState extends State<Home> {
   final music = ProceduralMusicService.instance;
+
+  List<HomeCardModel> services = [
+    HomeCardModel("chakra", ChakraScreens()),
+    HomeCardModel("astralTravel", AstralTravelScreen()),
+    HomeCardModel("lucidDreams", LucidDreamScreen()),
+    HomeCardModel("akashaRecords", AkashaScreen()),
+    HomeCardModel("centering", CenteringScreen()),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -30,18 +51,7 @@ class _HomeState extends State<Home> {
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            InkWell(
-              child: Container(
-                padding: EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.white, width: 1)
-                  ),
-                  child: Text("Percorso attivazione chakra")),
-            )
-          ],
+          children: List.generate(services.length, (index) => HomeCard(model: services[index])),
         ),
       ),
     );

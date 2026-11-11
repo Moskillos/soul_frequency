@@ -16,6 +16,7 @@ import '../costants/beats_list.dart';
 import '../services/ambient_audio_service.dart';
 import '../services/app_localization_service.dart';
 import '../services/binaural_audio_service.dart';
+import '../store/app_state.dart';
 
 class BinauralGenerator extends StatefulWidget {
   String nature;
@@ -30,7 +31,7 @@ class _BinauralGeneratorState extends State<BinauralGenerator> {
   final audio = AmbientAudioService.instance;
   bool loader = false;
 
-  void changeVolume(double value){
+  void changeNatureVolume(double value){
     setState(() {
       natureVolume = value;
     });
@@ -43,9 +44,11 @@ class _BinauralGeneratorState extends State<BinauralGenerator> {
 
   @override
   Widget build(BuildContext context) {
-    GeneratorModel generator = Provider.of<AppState>(context).generator;
-    double beat = Provider.of<AppState>(context).generator.beat;
-    double frequency = Provider.of<AppState>(context).generator.frequency;
+    AppState appState = Provider.of<AppState>(context);
+    GeneratorModel generator = appState.generator;
+    double beat = appState.generator.beat;
+    double proceduralVolume = appState.proceduralVolume;
+    double frequency = appState.generator.frequency;
 
     Widget beatsBenefits(){
       for(var b in beats){
@@ -86,59 +89,64 @@ class _BinauralGeneratorState extends State<BinauralGenerator> {
           ),
 
           SizedBox(height: 20,),
+          Column(
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              Text(AppLocalizations.of(context).translate("frequency"), style: whiteText10,),
+              SizedBox(height: 10,),
+              Container(
+                decoration: BoxDecoration(
+                    border: Border.all(color: Colors.white, width: 1),
+                    borderRadius: BorderRadius.circular(50),
+                    color: Colors.white
+                ),
+                constraints: BoxConstraints(
+                    maxWidth: 100,
+                    maxHeight: 45
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: TextFormField(
+                    maxLength: 3,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      counterText: '',
+                      border: InputBorder.none,
+                      hintText: frequency.toString(),
+                      hintStyle: blackText16,
+                    ),
+                    onChanged: (value) => setFrequency(value),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(
+            width: double.infinity,
+            height: 55,
+            child: ElevatedButton(
+              onPressed: () async {
+                setState(() {
+                  loader = true;
+                });
+                await Provider.of<AppState>(context, listen: false).setPlay(!generator.isPlaying);
+                setState(() {
+                  loader = false;
+                });
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: mainColor,
+                foregroundColor: backGroundColor,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              child: SvgPicture.asset(generator.isPlaying ? 'assets/stop.svg' : 'assets/play.svg', height: 70, color:generator.isPlaying ? Colors.red : Colors.yellow,),
+            ),
+          ),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                mainAxisAlignment: MainAxisAlignment.start,
-                children: [
-                  Text(AppLocalizations.of(context).translate("frequency"), style: whiteText10,),
-                  SizedBox(height: 10,),
-                  Container(
-                    decoration: BoxDecoration(
-                        border: Border.all(color: Colors.white, width: 1),
-                        borderRadius: BorderRadius.circular(50),
-                        color: Colors.white
-                    ),
-                    constraints: BoxConstraints(
-                        maxWidth: 100,
-                        maxHeight: 45
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: TextFormField(
-                        maxLength: 3,
-                        keyboardType: TextInputType.number,
-                        decoration: InputDecoration(
-                          counterText: '',
-                          border: InputBorder.none,
-                          hintText: frequency.toString(),
-                          hintStyle: blackText16,
-                        ),
-                        onChanged: (value) => setFrequency(value),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              InkWell(
-                onTap: () async {
-                  setState(() {
-                    loader = true;
-                  });
-                  await Provider.of<AppState>(context, listen: false).setPlay(!generator.isPlaying);
-                  setState(() {
-                    loader = false;
-                  });
-                },
-                child: Container(
-                    padding: EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                        color: generator.isPlaying ? detailColor : menuColor,
-                        borderRadius: BorderRadius.all(Radius.circular(50))
-                    ),
-                    child: SvgPicture.asset(generator.isPlaying ? 'assets/stop.svg' : 'assets/play.svg', height: 70, color:generator.isPlaying ? Colors.red : Colors.yellow,)),
-              ),
               Column(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
@@ -152,6 +160,17 @@ class _BinauralGeneratorState extends State<BinauralGenerator> {
                       );
                     }
                     Provider.of<AppState>(context, listen: false).setBinaural(v);
+
+                  }),
+                ],
+              ),
+              Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Text(AppLocalizations.of(context).translate("proceduralMusic"), style: whiteText10,),
+                  SizedBox(width: 10,),
+                  Switch(value: generator.useProcedural, onChanged: (v) async {
+                    Provider.of<AppState>(context, listen: false).setProceduralMusic(v);
 
                   }),
                 ],
@@ -194,23 +213,57 @@ class _BinauralGeneratorState extends State<BinauralGenerator> {
           ),
           if(!isBigScreen(context) && generator.isBinaural)beatsBenefits(),
           if(generator.isBinaural)SizedBox(height: 10,),
-
-          if(generator.isBinaural)Row(
-            children: [
-              Text("Beat", style: whiteText10,),
-              Slider(value: generator.beat / 100, onChanged: changeBeats),
-              Text("${generator.beat.toStringAsFixed(1)} Hz", style: whiteText14,)
-            ],
-          ),
-          if(generator.naturalSound != null)Row(
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Column(
                 children: [
+                  Text(AppLocalizations.of(context).translate("volume"), style: whiteText10,),
+                ],
+              ),
+              Slider(value: appState.binauralVolume, onChanged: (v){
+                Provider.of<AppState>(context, listen: false).setBinauralVolume(v);
+              }),
+            ],
+          ),
+          if(generator.isBinaural)Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Text("Beats :", style: whiteText10,),
+                  SizedBox(width: 5,),
+                  Text("${generator.beat.toStringAsFixed(1)} Hz", style: redText10,)
+                ],
+              ),
+              Slider(value: generator.beat / 100, onChanged: changeBeats),
+
+            ],
+          ),
+          if(generator.naturalSound != null)Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
                   Text(AppLocalizations.of(context).translate("environment"), style: whiteText10,),
+                  SizedBox(width: 5,),
                   Text(AppLocalizations.of(context).translate(generator.naturalSound!.name), style: redText10,),
                 ],
               ),
-              Slider(value: natureVolume, onChanged: changeVolume),
+              Slider(value: natureVolume, onChanged: changeNatureVolume),
+            ],
+          ),
+          if(generator.useProcedural)Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                children: [
+                  Text(AppLocalizations.of(context).translate("proceduralMusic"), style: whiteText10,),
+                ],
+              ),
+              Slider(value: proceduralVolume, onChanged: (v){
+                Provider.of<AppState>(context, listen: false).setProceduralVolume(v);
+              }),
             ],
           )
         ],

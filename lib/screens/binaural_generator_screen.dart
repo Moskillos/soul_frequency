@@ -82,7 +82,7 @@ class _BinauralGeneratorScreenState extends State<BinauralGeneratorScreen> {
                               // turns: 0.5 corrisponde a 180 gradi (mezza rotazione)
                               turns: _isExpanded ? 0.5 : 0.0,
                               duration: const Duration(milliseconds: 200),
-                              child: const Icon(Icons.keyboard_arrow_down),
+                              child: const Icon(Icons.keyboard_arrow_down, color: Colors.white,),
                             ),
                           ],
                         ),
@@ -144,7 +144,7 @@ class _BinauralGeneratorScreenState extends State<BinauralGeneratorScreen> {
                           // turns: 0.5 corrisponde a 180 gradi (mezza rotazione)
                           turns: _isPresetExpanded ? 0.5 : 0.0,
                           duration: const Duration(milliseconds: 200),
-                          child: const Icon(Icons.keyboard_arrow_down),
+                          child: const Icon(Icons.keyboard_arrow_down, color: Colors.white,),
                         ),
                       ],
                     ),

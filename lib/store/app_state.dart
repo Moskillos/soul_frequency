@@ -9,6 +9,7 @@ import 'package:soul_frequency/models/generator_model.dart';
 import '../models/natural_sound_model.dart';
 import '../services/ambient_audio_service.dart';
 import '../services/binaural_audio_service.dart';
+import '../services/procedural_music_service.dart';
 
 
 class AppState extends ChangeNotifier {
@@ -16,11 +17,12 @@ class AppState extends ChangeNotifier {
 
   GeneratorModel generator = GeneratorModel(
       TargetModel(
-        "Frequenza dell'Universo",
+        "Pace interiore",
         432,
         4,
-        1
-      ),
+        1,
+      "assets/blood.png"),
+      false,
       false,
       false,
       432,
@@ -28,6 +30,8 @@ class AppState extends ChangeNotifier {
   );
   List<ChakraModel> chakraStore = chakraList;
   List<NaturalSoundModel> naturalSoundsList = naturalSounds;
+  double proceduralVolume = 1;
+  double binauralVolume = 1;
 
   void setBinaural(bool value){
     generator.isBinaural = value;
@@ -35,11 +39,39 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setProceduralMusic(bool value){
+    generator.useProcedural = value;
+    notifyListeners();
+    play();
+
+  }
+
+  Future<void> setProceduralVolume(double value) async {
+    proceduralVolume = value;
+    notifyListeners();
+    await ProceduralMusicService.instance.setVolume(value);
+
+  }
+
+  Future<void> setBinauralVolume(double value) async {
+    binauralVolume = value;
+    notifyListeners();
+    BinauralAudioService.instance.setVolume(value);
+  }
+
   Future<void> play()async{
     if(!generator.isPlaying){
       await BinauralAudioService.instance.stop();
       await audio.stop();
+      await ProceduralMusicService.instance.stop();
     } else {
+      if (generator.useProcedural) {
+        await ProceduralMusicService.instance.start(
+          generator.frequency,
+        );
+      } else {
+        await ProceduralMusicService.instance.stop();
+      }
       if (generator.isBinaural) {
         await BinauralAudioService.instance.play(
             leftFrequency: generator.target.leftFrequency,
@@ -88,7 +120,7 @@ class AppState extends ChangeNotifier {
           notifyListeners();
           return;
         } else {
-          generator.target = TargetModel("Nessun target trovato", value, generator.beat, 1);
+          generator.target = TargetModel("Nessun target trovato", value, generator.beat, 1, "");
         }
       }
     }

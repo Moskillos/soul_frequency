@@ -13,33 +13,64 @@ class ProceduralMusicService {
   final SoLoud _soloud = SoLoud.instance;
 
   double _referenceFrequency = 432.0;
-
-  bool _isPlaying = false;
   double _volume = 0.35;
 
-  // Ogni sorgente ha una frequenza fissa.
-  // In questo modo le note sovrapposte non si modificano a vicenda.
+  bool _isPlaying = false;
+  bool _isPaused = false;
+  bool _initialized = false;
+
+  int _generation = 0;
+
   final Map<String, AudioSource> _sources = {};
-
-  // Conserviamo solo le voci appartenenti a questo motore musicale.
   final Set<SoundHandle> _handles = {};
+  final Map<SoundHandle, double> _voiceLevels = {};
 
-  bool get isPlaying => _isPlaying;
-
+  bool get isPlaying => _isPlaying && !_isPaused;
+  bool get isPaused => _isPaused;
   double get volume => _volume;
+
+  // --------------------------------------------------
+  // FREQUENZE
+  // --------------------------------------------------
 
   double noteFrequency(int midiNote) {
     return _referenceFrequency *
         math.pow(2, (midiNote - 69) / 12).toDouble();
   }
 
+  // --------------------------------------------------
+  // INIZIALIZZAZIONE
+  // --------------------------------------------------
+
+  Future<void> initialize() async {
+    if (_initialized) return;
+
+    // Il motore può essere già stato inizializzato
+    // dal BinauralAudioService.
+    if (!_soloud.isInitialized) {
+      await _soloud.init(
+        sampleRate: 44100,
+        bufferSize: 2048,
+        channels: Channels.stereo,
+      );
+    }
+
+    _initialized = true;
+  }
+
+  // --------------------------------------------------
+  // CARICAMENTO SORGENTI
+  // --------------------------------------------------
+
   Future<AudioSource> _getSource({
     required WaveForm waveform,
     required double frequency,
   }) async {
-    final key = '${waveform.name}_${frequency.toStringAsFixed(4)}';
+    final key =
+        '${waveform.name}_${frequency.toStringAsFixed(3)}';
 
     final cached = _sources[key];
+
     if (cached != null) return cached;
 
     final source = await _soloud.loadWaveform(
@@ -50,9 +81,79 @@ class ProceduralMusicService {
     );
 
     _soloud.setWaveformFreq(source, frequency);
+
     _sources[key] = source;
 
     return source;
+  }
+
+  // --------------------------------------------------
+  // RIPRODUZIONE DI UNA NOTA
+  // --------------------------------------------------
+
+  Future<void> _playTone({
+    required double frequency,
+    required WaveForm waveform,
+    required double level,
+    required Duration duration,
+    Duration attack = const Duration(milliseconds: 500),
+    Duration release = const Duration(milliseconds: 1500),
+    required int generation,
+  }) async {
+    if (!_isPlaying || generation != _generation) return;
+
+    final source = await _getSource(
+      waveform: waveform,
+      frequency: frequency,
+    );
+
+    if (!_isPlaying || generation != _generation) return;
+
+    final handle = _soloud.play(
+      source,
+      volume: 0.0,
+      looping: true,
+    );
+
+    _handles.add(handle);
+    _voiceLevels[handle] = level;
+
+    final targetVolume = (_volume * level).clamp(0.0, 1.0);
+
+    _soloud.fadeVolume(
+      handle,
+      targetVolume,
+      attack,
+    );
+
+    final safeRelease =
+    release < duration ? release : duration;
+
+    final waitBeforeRelease = duration - safeRelease;
+
+    await _wait(waitBeforeRelease, generation);
+
+    if (!_isPlaying ||
+        generation != _generation ||
+        !_handles.contains(handle)) {
+      return;
+    }
+
+    _soloud.fadeVolume(
+      handle,
+      0.0,
+      safeRelease,
+    );
+
+    await _wait(safeRelease, generation);
+
+    if (_handles.remove(handle)) {
+      _voiceLevels.remove(handle);
+
+      if (_soloud.getIsValidVoiceHandle(handle)) {
+        await _soloud.stop(handle);
+      }
+    }
   }
 
   Future<void> _playNote({
@@ -61,80 +162,79 @@ class ProceduralMusicService {
     required double level,
     required Duration duration,
     Duration attack = const Duration(milliseconds: 500),
-    Duration release = const Duration(milliseconds: 1200),
+    Duration release = const Duration(milliseconds: 1500),
+    required int generation,
   }) async {
-    if (!_isPlaying) return;
-
-    final source = await _getSource(
-      waveform: waveform,
+    await _playTone(
       frequency: noteFrequency(midiNote),
+      waveform: waveform,
+      level: level,
+      duration: duration,
+      attack: attack,
+      release: release,
+      generation: generation,
     );
+  }
 
-    if (!_isPlaying) return;
+  // --------------------------------------------------
+  // ATTESA CHE RISPETTA LA PAUSA
+  // --------------------------------------------------
 
-    final handle = await Future.value(
-      _soloud.play(source, volume: 0.0),
-    );
+  Future<void> _wait(
+      Duration duration,
+      int generation,
+      ) async {
+    var remaining = duration;
 
-    _handles.add(handle);
+    while (remaining > Duration.zero &&
+        _isPlaying &&
+        generation == _generation) {
+      await Future.delayed(
+        const Duration(milliseconds: 50),
+      );
 
-    // Entrata graduale della nota.
-    _soloud.fadeVolume(
-      handle,
-      (_volume * level).clamp(0.0, 1.0),
-      attack,
-    );
-
-    final safeRelease = release < duration ? release : duration;
-    final waitBeforeRelease = duration - safeRelease;
-
-    await Future.delayed(waitBeforeRelease);
-
-    if (!_isPlaying || !_handles.contains(handle)) return;
-
-    // Uscita graduale per evitare interruzioni brusche.
-    _soloud.fadeVolume(
-      handle,
-      0.0,
-      safeRelease,
-    );
-
-    await Future.delayed(safeRelease);
-
-    if (_handles.remove(handle)) {
-      await _soloud.stop(handle);
+      if (!_isPaused) {
+        remaining -= const Duration(milliseconds: 50);
+      }
     }
   }
 
-  Future<void> start(double frequency) async {
-    if (_isPlaying) return;
+  // --------------------------------------------------
+  // AVVIO MUSICA
+  // --------------------------------------------------
 
+  Future<void> start(double frequency) async {
     if (frequency < 100 || frequency > 1000) {
       throw ArgumentError('Frequenza non valida.');
     }
 
-    _referenceFrequency = frequency;
-    if (_isPlaying) return;
-
-    if (!_soloud.isInitialized) {
-      await _soloud.init(
-        sampleRate: 44100,
-        bufferSize: 2048,
-        channels: Channels.stereo,
-      );
+    if (_isPlaying) {
+      if (_referenceFrequency != frequency) {
+        await stop();
+      } else {
+        return;
+      }
     }
 
-    _isPlaying = true;
+    await initialize();
 
-    unawaited(_runHarmony());
-    unawaited(_runMelody());
-    unawaited(_runBells());
-    // unawaited(_runTibetanBowls());
+    _referenceFrequency = frequency;
+
+    _isPlaying = true;
+    _isPaused = false;
+
+    final generation = ++_generation;
+
+    unawaited(_runHarmony(generation));
+    unawaited(_runMelody(generation));
+    unawaited(_runBells(generation));
   }
 
-  Future<void> _runHarmony() async {
-    // Accordi: Do maggiore 7, La minore 7,
-    // Fa maggiore 7, Sol sospeso.
+  // --------------------------------------------------
+  // ARMONIA / PAD
+  // --------------------------------------------------
+
+  Future<void> _runHarmony(int generation) async {
     const chords = <List<int>>[
       [48, 55, 59, 64],
       [45, 52, 55, 60],
@@ -144,7 +244,7 @@ class ProceduralMusicService {
 
     var index = 0;
 
-    while (_isPlaying) {
+    while (_isPlaying && generation == _generation) {
       final chord = chords[index % chords.length];
 
       for (final note in chord) {
@@ -152,29 +252,39 @@ class ProceduralMusicService {
           _playNote(
             midiNote: note,
             waveform: WaveForm.sin,
-            level: 0.16,
-            duration: const Duration(seconds: 10),
-            attack: const Duration(seconds: 3),
-            release: const Duration(seconds: 3),
+            level: 0.18,
+            duration: const Duration(seconds: 12),
+            attack: const Duration(seconds: 4),
+            release: const Duration(seconds: 4),
+            generation: generation,
           ),
         );
       }
 
       index++;
-      await Future.delayed(const Duration(seconds: 8));
+
+      await _wait(
+        const Duration(seconds: 8),
+        generation,
+      );
     }
   }
 
-  Future<void> _runMelody() async {
-    // Frase in Do maggiore: lenta e con pause.
+  // --------------------------------------------------
+  // MELODIA PRINCIPALE
+  // --------------------------------------------------
+
+  Future<void> _runMelody(int generation) async {
     const melody = <int?>[
-      72, null, 76, 79, null, 76, 74, null,
-      72, 67, null, 71, 72, null, 76, null,
+      72, null, 76, 79,
+      null, 76, 74, null,
+      72, 67, null, 71,
+      72, null, 76, null,
     ];
 
     var index = 0;
 
-    while (_isPlaying) {
+    while (_isPlaying && generation == _generation) {
       final note = melody[index % melody.length];
 
       if (note != null) {
@@ -182,152 +292,148 @@ class ProceduralMusicService {
           _playNote(
             midiNote: note,
             waveform: WaveForm.triangle,
-            level: 0.18,
-            duration: const Duration(milliseconds: 2400),
-            attack: const Duration(milliseconds: 350),
-            release: const Duration(milliseconds: 1600),
+            level: 0.20,
+            duration: const Duration(milliseconds: 3000),
+            attack: const Duration(milliseconds: 700),
+            release: const Duration(milliseconds: 2000),
+            generation: generation,
           ),
         );
       }
 
       index++;
-      await Future.delayed(const Duration(milliseconds: 1500));
+
+      await _wait(
+        const Duration(milliseconds: 1800),
+        generation,
+      );
     }
   }
 
-  Future<void> _runBells() async {
-    // Arpeggi occasionali, più acuti e delicati.
-    const pattern = <int>[84, 79, 76, 72, 76, 79, 86, 79];
+  // --------------------------------------------------
+  // CAMPANE ARMONICHE
+  // --------------------------------------------------
+
+  Future<void> _playBell(
+      int midiNote,
+      int generation,
+      ) async {
+    final fundamental = noteFrequency(midiNote);
+
+    final partials = [
+      (frequency: fundamental, amplitude: 1.0),
+      (frequency: fundamental * 2.71, amplitude: 0.30),
+      (frequency: fundamental * 4.13, amplitude: 0.12),
+    ];
+
+    for (final partial in partials) {
+      unawaited(
+        _playTone(
+          frequency: partial.frequency,
+          waveform: WaveForm.sin,
+          level: 0.13 * partial.amplitude,
+          duration: const Duration(seconds: 9),
+          attack: const Duration(milliseconds: 80),
+          release: const Duration(seconds: 7),
+          generation: generation,
+        ),
+      );
+    }
+  }
+
+  Future<void> _runBells(int generation) async {
+    const pattern = [
+      84, 79, 76, 72,
+      76, 79, 86, 79,
+    ];
 
     var index = 0;
 
-    while (_isPlaying) {
-      await Future.delayed(const Duration(seconds: 4));
+    while (_isPlaying && generation == _generation) {
+      await _wait(
+        const Duration(seconds: 5),
+        generation,
+      );
 
-      if (!_isPlaying) break;
+      if (!_isPlaying || generation != _generation) break;
 
       unawaited(
-        _playNote(
-          midiNote: pattern[index % pattern.length],
-          waveform: WaveForm.sin,
-          level: 0.12,
-          duration: const Duration(seconds: 3),
-          attack: const Duration(milliseconds: 40),
-          release: const Duration(milliseconds: 2500),
+        _playBell(
+          pattern[index % pattern.length],
+          generation,
         ),
       );
 
       index++;
-      await Future.delayed(const Duration(seconds: 2));
     }
   }
 
-  Future<void> _playTibetanBowl({
-    required int midiNote,
-    double level = 0.20,
-  }) async {
-    if (!_isPlaying) return;
-
-    final fundamental = noteFrequency(midiNote);
-
-    // Le campane tibetane hanno armoniche non necessariamente
-    // multiple esatte della fondamentale.
-    final partials = [
-      (frequency: fundamental, amplitude: 1.0),
-      (frequency: fundamental * 2.71, amplitude: 0.35),
-      (frequency: fundamental * 4.13, amplitude: 0.18),
-      (frequency: fundamental * 5.43, amplitude: 0.10),
-    ];
-
-    // Qui riproduciamo le componenti armoniche.
-    // Ogni componente avrà un proprio volume e decadimento.
-    for (final partial in partials) {
-      final source = await _getSource(
-        waveform: WaveForm.sin,
-        frequency: partial.frequency,
-      );
-
-      if (!_isPlaying) return;
-
-      final handle = _soloud.play(source, volume: 0.0);
-      _handles.add(handle);
-
-      final targetVolume =
-      (_volume * level * partial.amplitude).clamp(0.0, 1.0);
-
-      _soloud.fadeVolume(
-        handle,
-        targetVolume,
-        const Duration(milliseconds: 80),
-      );
-
-      unawaited(_releaseBowlPartial(
-        handle,
-        const Duration(seconds: 9),
-      ));
-    }
-  }
-
-  Future<void> _releaseBowlPartial(
-      SoundHandle handle,
-      Duration duration,
-      ) async {
-    await Future.delayed(duration);
-
-    if (!_handles.contains(handle)) return;
-
-    _soloud.fadeVolume(
-      handle,
-      0.0,
-      const Duration(seconds: 8),
-    );
-
-    await Future.delayed(const Duration(seconds: 8));
-
-    if (_handles.remove(handle)) {
-      await _soloud.stop(handle);
-    }
-  }
-
-  Future<void> _runTibetanBowls() async {
-    final random = math.Random();
-
-    const notes = [48, 55, 60, 64, 67, 72];
-
-    while (_isPlaying) {
-      await Future.delayed(
-        Duration(seconds: 12 + random.nextInt(10)),
-      );
-
-      if (!_isPlaying) break;
-
-      final note = notes[random.nextInt(notes.length)];
-
-      unawaited(
-        _playTibetanBowl(
-          midiNote: note,
-          level: 0.20,
-        ),
-      );
-    }
-  }
+  // --------------------------------------------------
+  // VOLUME
+  // --------------------------------------------------
 
   Future<void> setVolume(double value) async {
     _volume = value.clamp(0.0, 1.0);
 
-    // Aggiorna il volume delle voci attualmente attive.
     for (final handle in _handles.toList()) {
       if (_soloud.getIsValidVoiceHandle(handle)) {
-        _soloud.setVolume(handle, _volume * 0.15);
+        final level = _voiceLevels[handle] ?? 0.15;
+
+        _soloud.setVolume(
+          handle,
+          (_volume * level).clamp(0.0, 1.0),
+        );
       }
     }
   }
 
+  // --------------------------------------------------
+  // PAUSA
+  // --------------------------------------------------
+
+  Future<void> pause() async {
+    if (!_isPlaying || _isPaused) return;
+
+    _isPaused = true;
+
+    for (final handle in _handles.toList()) {
+      if (_soloud.getIsValidVoiceHandle(handle)) {
+        _soloud.setPause(handle, true);
+      }
+    }
+  }
+
+  // --------------------------------------------------
+  // RIPRESA
+  // --------------------------------------------------
+
+  Future<void> resume() async {
+    if (!_isPlaying || !_isPaused) return;
+
+    _isPaused = false;
+
+    for (final handle in _handles.toList()) {
+      if (_soloud.getIsValidVoiceHandle(handle)) {
+        _soloud.setPause(handle, false);
+      }
+    }
+  }
+
+  // --------------------------------------------------
+  // STOP COMPLETO
+  // --------------------------------------------------
+
   Future<void> stop() async {
     _isPlaying = false;
+    _isPaused = false;
+
+    // Invalida tutte le attività asincrone precedenti.
+    _generation++;
 
     final activeHandles = _handles.toList();
+
     _handles.clear();
+    _voiceLevels.clear();
 
     for (final handle in activeHandles) {
       if (_soloud.getIsValidVoiceHandle(handle)) {
@@ -335,6 +441,10 @@ class ProceduralMusicService {
       }
     }
   }
+
+  // --------------------------------------------------
+  // DISPOSE
+  // --------------------------------------------------
 
   Future<void> dispose() async {
     await stop();
@@ -344,5 +454,8 @@ class ProceduralMusicService {
     }
 
     _sources.clear();
+
+    // Non deinizializziamo SoLoud:
+    // potrebbe essere ancora utilizzato dal servizio binaurale.
   }
 }

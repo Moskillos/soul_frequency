@@ -1,9 +1,12 @@
 {
-
+  "akashaRecords": "Registro Akashico",
+  "astralTravel":  "Viaggio astrale",
   "balance": "Equilibrio",
   "binaural": "Binaurale",
   "birds": "Uccelli",
   "cat": "Gatto",
+  "centering": "Centratura",
+  "chakra": "Chakra",
   "concentration": "Concentrazione",
   "creativity": "Creatività",
 
@@ -11,7 +14,7 @@
   "deepSea": "Oceano Profondo",
   "deepSleep": "Sonno profondo",
   "diaryLife": "Vita diurna",
-  "environment": "Ambiente",
+  "environment": "Ambiente:",
   "fire": "Fuoco",
   "frequency": "Frequenza",
 
@@ -22,14 +25,17 @@
   "highPerformance": "Alte prestazioni",
   "intuition": "Intuizioni",
   "learning": "Apprendimento",
+  "lucidDreams": "Sogni lucidi",
   "maxAttention": "Massima attenzione",
   "mentalActivity": "Attività mentale",
   "none": "Nessuno",
   "offBinaural": "Binaurale off",
   "onBinaural": "Binaurale on",
+  "proceduralMusic": "Musica procedurale",
   "rain": "Pioggia",
   "regeneration":  "Rigenerazione",
   "relax": "Rilassamento",
+  "volume": "Volume",
   "waves": "Onde",
   "wind": "Vento"
 }

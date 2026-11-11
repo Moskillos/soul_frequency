@@ -21,15 +21,28 @@ class _BinauralCardState extends State<BinauralCard> {
         Provider.of<AppState>(context, listen: false).setTarget(widget.target);
       },
       child: Container(
-        padding: EdgeInsets.all(5),
         decoration: BoxDecoration(
-          color: Colors.black12,
+            image: DecorationImage(
+              image: AssetImage(widget.target.image),
+              fit: BoxFit.cover,
+            ),
           borderRadius: BorderRadius.all(Radius.circular(20))
         ),
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(widget.target.target, style: whiteText16,),
-            Text("${widget.target.leftFrequency}Hz - ${widget.target.beatFrequency}Hz", style: whiteText16,)
+            Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.5),
+                ),
+                child: Center(child: Text(widget.target.target, style: whiteText16,))),
+            Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.5),
+                ),
+                child: Center(child: Text("${widget.target.leftFrequency}Hz - ${widget.target.beatFrequency}bts", style: whiteText10,)))
           ],
         ),
       ),
